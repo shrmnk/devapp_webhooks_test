@@ -16,18 +16,25 @@ const maxUpdates = 100;
 var receivedUpdates = [];
 var lastUpdated = Date.now();
 
-async function validateXHub(ctx, next) {
+const validateXHub = async (ctx, next) => {
     if (sigSecret != null) {
+        console.log('Validating X-Hub');
         const sig = ctx.request.header[sigHeaderName];
         if (sig != null) {
+            console.log('X-Hub Header found, proceeding to validate');
             const hmac = crypto.createHmac(sigHashAlg, sigSecret);
             const digest = Buffer.from(sigHashAlg + '=' + hmac.update(ctx.request.body).digest('hex'), 'utf8');
             if (sig.length !== digest.length || !crypto.timingSafeEqual(digest, sig)) {
-                ctx.status = 401
+                ctx.status = 401;
+                console.log('X-Hub token is INVALID');
                 ctx.body(`Received webhooks update with invalid ${sigHeaderName}`);
                 await next(`Received webhooks update with invalid ${sigHeaderName}`);
+            } else {
+                console.log('X-Hub token is validated successfully');
             }
         }
+    } else {
+        console.log('APP_SECRET not specified; avoiding validation of X-Hub');
     }
     await next();
 }
@@ -67,13 +74,17 @@ router.get('/webhooks', (ctx) => {
 });
 
 // Parsing incoming webhooks, which relies on koaBody to parse JSON after validating X-hub header
-router.post('/webhooks', validateXHub, koaBody(), (ctx) => {
-    console.log(`Received webhook data: `);
+router.post('/webhooks', validateXHub, koaBody(), async (ctx, next) => {
+    console.log(`Received webhook data: `, ctx.request.body);
     receivedUpdates.unshift(ctx.request.body);
     // Remove until the last object
     while (receivedUpdates.length > maxUpdates) {
         receivedUpdates.pop();
     }
+    ctx.status = 200;
+    ctx.body = 'Received';
+
+    await next();
 });
 
 app.use(router.routes()).use(router.allowedMethods());
