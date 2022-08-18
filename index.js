@@ -60,7 +60,8 @@ app.use(async (ctx, next) => {
 
 // The root page should just return the latest webhook data
 router.get('/', (ctx) => {
-    ctx.body = `<h3>Total Updates: ${receivedUpdates.length}&nbsp;<small>Caching only ${maxUpdates} updates</small></h3><pre>${JSON.stringify(receivedUpdates, null, 2)}</pre>`;
+    ctx.body = `<head><title>Webhooks</title></head><body><h3>Total Updates: ${receivedUpdates.length}&nbsp;<small>Caching only ${maxUpdates} updates</small></h3>
+    ${receivedUpdates.map((update, idx) => `<strong>${idx+1}</strong><pre>${JSON.stringify(update, null, 2)}</pre>`).join('<hr />')}</body>`
 });
 
 // The webhook registration page
