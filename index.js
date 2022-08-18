@@ -79,14 +79,14 @@ router.get('/webhooks', (ctx) => {
 router.post('/webhooks', koaBody(), async (ctx, next) => {
     console.log(`Received webhook data: `, ctx.request.body);
     receivedUpdates.unshift(ctx.request.body);
+    ctx.status = 200;
+    ctx.body = 'Received';
+    await next();
+    
     // Remove until the last object
     while (receivedUpdates.length > maxUpdates) {
         receivedUpdates.pop();
     }
-    ctx.status = 200;
-    ctx.body = 'Received';
-
-    await next();
 });
 
 app.use(router.routes()).use(router.allowedMethods());
