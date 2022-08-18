@@ -6,16 +6,17 @@ const crypto = require('crypto')
 const app = new Koa({ proxy: true });
 const router = new Router();
 
-// Header name found in https://developers.facebook.com/docs/graph-api/webhooks/getting-started#event-notifications
-const sigHeaderName = 'X-Hub-Signature-256'
-const sigHashAlg = 'sha256'
-const sigSecret = process.env.APP_SECRET;
-
 // Keep a maximum here so we don't use up all the memory
 const maxUpdates = 100;
 var receivedUpdates = [];
 var lastUpdated = Date.now();
 
+// Uncomment if you wish to validate Event Notifications, and add as a middleware *before* koaBody() in the POST webhooks route
+// i.e. `router.post('/webhooks', validateXHub, koaBody(), async (ctx, next) => {`
+// Docs: https://developers.facebook.com/docs/graph-api/webhooks/getting-started#event-notifications
+// const sigHeaderName = 'X-Hub-Signature-256'
+// const sigHashAlg = 'sha256'
+// const sigSecret = process.env.APP_SECRET;
 // const validateXHub = async (ctx, next) => {
 //     if (sigSecret != null) {
 //         console.log('Validating X-Hub');
@@ -74,7 +75,7 @@ router.get('/webhooks', (ctx) => {
     }
 });
 
-// Parsing incoming webhooks, which relies on koaBody to parse JSON after validating X-hub header
+// Parsing incoming webhooks, which relies on koaBody to parse JSON
 router.post('/webhooks', koaBody(), async (ctx, next) => {
     console.log(`Received webhook data: `, ctx.request.body);
     receivedUpdates.unshift(ctx.request.body);
