@@ -91,6 +91,6 @@ router.post('/webhooks', koaBody(), async (ctx, next) => {
 });
 
 app.use(router.routes()).use(router.allowedMethods());
-app.listen(5000);
+app.listen(process.env.PORT ?? 5000);
 
 console.log('Server Started');
