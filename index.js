@@ -78,6 +78,7 @@ router.get('/webhooks', (ctx) => {
 
 // Parsing incoming webhooks, which relies on koaBody to parse JSON
 router.post('/webhooks', koaBody(), async (ctx, next) => {
+    ctx.accepts('json');
     console.log(`Received webhook data: `, ctx.request.body);
     receivedUpdates.unshift(ctx.request.body);
     ctx.status = 200;
