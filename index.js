@@ -2,7 +2,11 @@ const Koa = require('koa');
 const Router = require('@koa/router');
 const koaBody = require('koa-body');
 
-const app = new Koa({ proxy: true });
+const app = new Koa({
+    proxy: true,
+    // Uncomment if you are using Cloudflare
+    // proxyIpHeader: 'CF-Connecting-IP'
+});
 const router = new Router();
 
 // Keep a maximum here so we don't use up all the memory
@@ -80,7 +84,7 @@ router.get('/webhooks', (ctx) => {
 router.post('/webhooks', koaBody(), async (ctx, next) => {
     ctx.accepts('json');
     console.log(`Received webhook data: `, ctx.request.body);
-    receivedUpdates.unshift(ctx.request.body);
+    receivedUpdates.unshift({ "IP_ADDRESS": ctx.request.ip, "BODY": ctx.request.body });
     ctx.status = 200;
     ctx.body = 'Received';
     await next();
