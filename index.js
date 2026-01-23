@@ -61,19 +61,19 @@ app.use(async (ctx, next) => {
 // The root page should just return the latest webhook data
 router.get('/', (ctx) => {
     ctx.body = `<head><title>Webhooks</title></head><body><h3>Total Updates: ${receivedUpdates.length}&nbsp;<small>Caching only ${maxUpdates} updates</small></h3>
-    ${receivedUpdates.map((update, idx) => `<strong>${idx+1}</strong><pre>${JSON.stringify(update, null, 2)}</pre>`).join('<hr />')}</body>`
+    ${receivedUpdates.map((update, idx) => `<strong>${idx + 1}</strong><pre>${JSON.stringify(update, null, 2)}</pre>`).join('<hr />')}</body>`
 });
 
 // The webhook registration page
 router.get('/webhooks', (ctx) => {
     // Processed according to https://developers.facebook.com/docs/graph-api/webhooks/getting-started#verification-requests
     const queryParams = ctx.request.query;
-    if (queryParams['hub.mode'] != 'subscribe' || queryParams['hub.verify_token'] != process.env.VERIFY_TOKEN) {
-        ctx.status = 401;
-        ctx.body = 'hub.mode is not `subscribe`, or hub.verify_token does not match the provided environment\'s value';
-    } else {
+    if (queryParams['hub.mode'] === 'subscribe' && queryParams['hub.verify_token'] === process.env.VERIFY_TOKEN) {
         ctx.body = queryParams['hub.challenge'];
+        return;
     }
+    ctx.status = 403; // https://developers.facebook.com/docs/messenger-platform/webhooks
+    ctx.body = 'hub.mode is not `subscribe`, or hub.verify_token does not match the provided environment\'s value';
 });
 
 // Parsing incoming webhooks, which relies on koaBody to parse JSON
