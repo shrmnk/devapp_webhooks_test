@@ -7,6 +7,56 @@ const ollama = new ollamaLib.Ollama({
     host: process.env.OLLAMA_HOST,
 });
 
+// Helper function to send messages via Messenger Send API
+async function sendMessengerMessage(recipientId, mid, messageText) {
+    const pageAccessToken = process.env.PAGE_ACCESS_TOKEN;
+    const pageId = process.env.PAGE_ID;
+    if (!pageAccessToken) {
+        console.error('[Messenger] PAGE_ACCESS_TOKEN not configured');
+        return null;
+    }
+
+    const requestBody = {
+        messaging_type: 'RESPONSE',
+        recipient: {
+            id: recipientId
+        },
+        message: {
+            text: messageText
+        },
+        reply_to: {
+            mid
+        }
+    };
+
+    try {
+        const response = await fetch(
+            `https://graph.facebook.com/v21.0/${pageId}/messages`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${pageAccessToken}`,
+                },
+                body: JSON.stringify(requestBody),
+            }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error('[Messenger] Send API error:', result);
+            return null;
+        }
+
+        console.log('[Messenger] Message sent successfully:', result);
+        return result;
+    } catch (error) {
+        console.error('[Messenger] Failed to send message:', error);
+        return null;
+    }
+}
+
 const app = new Koa({
     proxy: true,
     // Uncomment if you are using Cloudflare
@@ -98,6 +148,11 @@ router.post('/webhooks', koaBody(), async (ctx, next) => {
     if(isMessagingAPI) {
         console.log('receivedUpdates', receivedUpdates);
 
+        // Extract sender ID for replying
+        const senderId = ctx.request.body?.entry?.[0]?.messaging?.[0]?.sender?.id;
+        const mid = ctx.request.body?.entry?.[0]?.messaging?.[0]?.message?.mid;
+        console.log('[Messenger] Sender ID:', senderId);
+
         const messagesOnly = receivedUpdates.filter(
             (message) => message.role === 'assistant'
                 || (message.role === 'user' && message.BODY?.object === 'page' && (message.BODY?.entry?.[0]?.messaging?.length ?? 0) > 0)
@@ -130,15 +185,23 @@ router.post('/webhooks', koaBody(), async (ctx, next) => {
                 think: false,
             });
             const ollamaDate = new Date();
-            console.log('[Ollama] Received Ollama Response of length', ollamaResponse.message?.content ?? 0);
+            const responseContent = ollamaResponse.message?.content ?? '(no content)';
+            console.log('[Ollama] Received Ollama Response of length', responseContent.length);
             console.log('[Ollama] Ollama Response: ', ollamaResponse.message);
             receivedUpdates.unshift({
                 "TIME": ollamaDate,
                 "TIMESTAMP": ollamaDate.valueOf(),
                 "role": "assistant",
-                "BODY": ollamaResponse.message?.content ?? '(no content)',
+                "BODY": responseContent,
                 "model": process.env.OLLAMA_MODEL,
             });
+
+            // Send the response back to the user via Messenger Send API
+            if (senderId) {
+                await sendMessengerMessage(senderId, mid, responseContent);
+            } else {
+                console.error('[Messenger] No sender ID found, cannot send reply');
+            }
         }
     }
 
