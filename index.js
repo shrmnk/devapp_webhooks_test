@@ -198,7 +198,8 @@ router.post('/webhooks', koaBody(), async (ctx, next) => {
 
             // Send the response back to the user via Messenger Send API
             if (senderId) {
-                await sendMessengerMessage(senderId, mid, responseContent);
+                const sendAPIResponse = await sendMessengerMessage(senderId, mid, responseContent);
+                console.log('[Messenger] Send API response:', sendAPIResponse);
             } else {
                 console.error('[Messenger] No sender ID found, cannot send reply');
             }
