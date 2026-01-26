@@ -127,7 +127,7 @@ router.post('/webhooks', koaBody(), async (ctx, next) => {
                 stream: false,
                 keep_alive: '5m',
                 messages,
-                think: 'false',
+                think: false,
             });
             const ollamaDate = new Date();
             console.log('[Ollama] Received Ollama Response of length', ollamaResponse.message?.content ?? 0);
