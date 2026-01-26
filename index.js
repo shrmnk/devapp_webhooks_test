@@ -93,49 +93,53 @@ router.post('/webhooks', koaBody(), async (ctx, next) => {
     receivedUpdates.unshift({ "TIME": currentDate, "TIMESTAMP": currentDate.valueOf(), "IP_ADDRESS": ctx.request.ip, "role": "user", "BODY": ctx.request.body });
     ctx.status = 200;
     ctx.body = 'Received';
-    console.log('receivedUpdates', receivedUpdates);
 
-    const messagesOnly = receivedUpdates.filter(
-        (message) => message.role === 'assistant'
-            || (message.role === 'user' && message.BODY?.object === 'page' && (message.BODY?.entry?.[0]?.messaging?.length ?? 0) > 0)
-    );
-    console.log('messagesOnly', messagesOnly);
+    const isMessagingAPI = ctx.request.body?.object === 'page' && (ctx.request.body?.entry?.[0]?.messaging?.length ?? 0) > 0;
+    if(isMessagingAPI) {
+        console.log('receivedUpdates', receivedUpdates);
 
-    const messages = messagesOnly.map((message) => {
-        const textContent = message.role === 'user' ? message.BODY?.entry?.[0]?.messaging?.[0]?.message?.text ?? '(no text)' : message.BODY;
-        console.log('textContent', textContent);
-        console.log('entry', message.BODY?.entry);
+        const messagesOnly = receivedUpdates.filter(
+            (message) => message.role === 'assistant'
+                || (message.role === 'user' && message.BODY?.object === 'page' && (message.BODY?.entry?.[0]?.messaging?.length ?? 0) > 0)
+        );
+        console.log('messagesOnly', messagesOnly);
 
-        return ({
-            role: message.role,
-            content: `[Timestamp=${message.TIMESTAMP}]: ${textContent}`,
+        const messages = messagesOnly.map((message) => {
+            const textContent = message.role === 'user' ? message.BODY?.entry?.[0]?.messaging?.[0]?.message?.text ?? '(no text)' : message.BODY;
+            console.log('textContent', textContent);
+            console.log('entry', message.BODY?.entry);
+
+            return ({
+                role: message.role,
+                content: `[Timestamp=${message.TIMESTAMP}]: ${textContent}`,
+            });
         });
-    });
-    console.log('[Ollama] Messages to send to Ollama contains', messages.length, 'messages');
-    console.log('messages', messages);
+        console.log('[Ollama] Messages to send to Ollama contains', messages.length, 'messages');
+        console.log('messages', messages);
 
-    // Send to Ollama
-    if (messages.length === 0) {
-        console.log('[Ollama] No messages to send to Ollama');
-    } else {
-        const ollamaResponse = await ollama.chat({
-            model: process.env.OLLAMA_MODEL,
-            format: 'json',
-            stream: false,
-            keep_alive: '5m',
-            messages,
-            think: 'false',
-        });
-        const ollamaDate = new Date();
-        console.log('[Ollama] Received Ollama Response of length', ollamaResponse.message?.content ?? 0);
-        console.log('[Ollama] Ollama Response: ', ollamaResponse.message);
-        receivedUpdates.unshift({
-            "TIME": ollamaDate,
-            "TIMESTAMP": ollamaDate.valueOf(),
-            "role": "assistant",
-            "BODY": ollamaResponse.message?.content ?? '(no content)',
-            "model": process.env.OLLAMA_MODEL,
-        });
+        // Send to Ollama
+        if (messages.length === 0) {
+            console.log('[Ollama] No messages to send to Ollama');
+        } else {
+            const ollamaResponse = await ollama.chat({
+                model: process.env.OLLAMA_MODEL,
+                format: 'json',
+                stream: false,
+                keep_alive: '5m',
+                messages,
+                think: 'false',
+            });
+            const ollamaDate = new Date();
+            console.log('[Ollama] Received Ollama Response of length', ollamaResponse.message?.content ?? 0);
+            console.log('[Ollama] Ollama Response: ', ollamaResponse.message);
+            receivedUpdates.unshift({
+                "TIME": ollamaDate,
+                "TIMESTAMP": ollamaDate.valueOf(),
+                "role": "assistant",
+                "BODY": ollamaResponse.message?.content ?? '(no content)',
+                "model": process.env.OLLAMA_MODEL,
+            });
+        }
     }
 
     await next();
