@@ -181,7 +181,7 @@ router.post('/webhooks', koaBody(), async (ctx, next) => {
                 format: 'json',
                 stream: false,
                 keep_alive: '5m',
-                messages,
+                messages: [messages[0]],
                 think: false,
             });
             const ollamaDate = new Date();
